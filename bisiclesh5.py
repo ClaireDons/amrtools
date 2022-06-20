@@ -6,8 +6,12 @@
 # 5/ create class - tick
 # 6/ option to vary level depth of plot as optional input
 # 7/ grid structure - which level/box to find each grid point
-# 8 add limits and linear/log, colorscale, transform to variable table
+# 8 add linear/log,
 # 9 magnitude fn
+
+# notes test
+# np.mean([np.mean(i) for i in thck.data[lev]])
+# bb=[j for j in i for i in thck.data]
 
 
 import h5py
@@ -17,6 +21,18 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
 
 from copy import deepcopy
+
+def i2x(i, dx):
+
+  x = i * dx + dx/2.0
+
+  return x
+
+def x2i(x, dx):
+
+  i = int(x / dx - 0.5)
+
+  return i
 
 class bisicles_var:
 
@@ -66,6 +82,8 @@ class bisicles_var:
 
     levelsdx = []
     levelsboxes = []
+    levelsi = []
+    levelsj = []
     levelsx = []
     levelsy = []
     levelsdata = []
@@ -86,15 +104,22 @@ class bisicles_var:
 
       n_boxes = len(h5box)
 
+      boxesi = []
+      boxesj = []
       boxesx = []
       boxesy = []
       boxesdata = []
 
-      for box in range(n_boxes):
+      for box in range(len(h5box)):
 
-        x = np.arange(h5box['lo_i'][box]-1,h5box['hi_i'][box]+2) * dx
-        y = np.arange(h5box['lo_j'][box]-1,h5box['hi_j'][box]+2) * dx
+        x = np.arange(h5box['lo_i'][box]-1,h5box['hi_i'][box]+2) * dx + dx/2.0
+        y = np.arange(h5box['lo_j'][box]-1,h5box['hi_j'][box]+2) * dx + dx/2.0
 
+        # x = np.arange(self.i2x(h5box['lo_i'][box]-1,dx),self.i2x(h5box['hi_i'][box]+2,dx))
+        # y = np.arange(self.i2x(h5box['lo_j'][box]-1,dx),self.i2x(h5box['hi_j'][box]+2,dx))
+
+        boxesi.append([h5box['lo_i'][box],h5box['hi_i'][box]])
+        boxesj.append([h5box['lo_j'][box],h5box['hi_j'][box]])
         boxesx.append(x)
         boxesy.append(y)
 
@@ -102,16 +127,18 @@ class bisicles_var:
         ny = len(y)
         en = h5offs[box]
 
-        # if level < 1:
-        #  print(level, box, h5offs[box], h5box['lo_i'][box], h5box['hi_i'][box], h5box['lo_j'][box], h5box['hi_j'][box])
-
-            # h5data[st:en] = np.where(h5data[st:en] == 0.0, np.NAN, h5data[st:en])
-
         st = en + tarcomponent * nx * ny
         en = en + (tarcomponent+1) * nx * ny
 
+        # if level == 1:
+        #   print(level, box, h5offs[box], nx*nx*n_components, h5offs[box]+nx*nx*n_components-1, st, en)
+
+            # h5data[st:en] = np.where(h5data[st:en] == 0.0, np.NAN, h5data[st:en])
+
         boxesdata.append(h5data[st:en].reshape((ny,nx)))
 
+      levelsi.append(boxesi)
+      levelsj.append(boxesj)
       levelsx.append(boxesx)
       levelsy.append(boxesy)
       levelsdata.append(boxesdata)
@@ -128,13 +155,15 @@ class bisicles_var:
     self.levels = n_level
     self.boxes = levelsboxes
     self.dx = levelsdx
+    self.i = levelsi
+    self.j = levelsj
     self.x = levelsx
     self.y = levelsy
     self.data = levelsdata
 
     return None
 
-  def plot(self, datamin=np.NAN, datamax=np.NAN):
+  def plot(self, datamin=np.NAN, datamax=np.NAN, boxplot=False, cmap='hsv', plotlevels=np.NAN):
 
     """
     thck.plot(datamin=0.0,datamax=100.0) both optional, defaults to min and max of data
@@ -163,15 +192,47 @@ class bisicles_var:
 
       return datamin, datamax
 
+    def getpoints(x,y):
+
+      # part of failed effort to show outline of regon rather than indivdual boxes
+
+      points = []
+
+      for box in x:
+
+        x1 = x[box][0:2].sum() / 2.0
+        x2 = x[box][-2:].sum() / 2.0
+        y1 = y[box][0:2].sum() / 2.0
+        y2 = y[box][-2:].sum() / 2.0
+
+        points.extend(([x1,x2,y1,y1], [x1,x2,y2,y2], [x1,x1,y1,y2], [x2,x2,y1,y2]))
+
+      uniq = [xx for xx in points if points.count(xx) == 1]
+
+      # uniq = []
+
+      # for it in points:
+      #   if it not in uniq:
+      #     # print(it)
+      #     uniq.append(it)
+
+      # uniq = np.array(uniq)
+
+      # print(len(points), len(uniq))
+
+      return uniq
+
     if np.isnan(datamin) | np.isnan(datamax):
       datamin, datamax = minmax(self.data)
 
     fig, ax = plt.subplots()
 
-    color =['k', 'r', 'b', 'g', 'm', 'c']
+    color =['y', 'r', 'b', 'g', 'm', 'c']
 
+    if np.isnan(plotlevels):
+      plotlevels = self.levels
 
-    for level in range(self.levels):
+    for level in range(plotlevels):
       for box in range(self.boxes[level]):
 
         X, Y = np.meshgrid( \
@@ -180,16 +241,27 @@ class bisicles_var:
 
         # print(box, X.shape, self.x[level][box].shape)
 
-        pcm = ax.pcolormesh(X, Y, self.data[level][box], shading = 'flat', cmap = 'hsv', \
+        pcm = ax.pcolormesh(X, Y, self.data[level][box], shading = 'flat', cmap = cmap, \
                             vmin = datamin, vmax = datamax)
         # , edgecolor = 'k'
-        rect = ptch.Rectangle((self.x[level][box][0:2].sum()/2.0, \
-                               self.y[level][box][0:2].sum()/2.0), \
-                               self.x[level][box][-2]-self.x[level][box][0], \
-                               self.y[level][box][-2]-self.y[level][box][0], \
-                               linewidth = 1, edgecolor = color[level], facecolor = 'none')
 
-        ax.add_patch(rect)
+        if boxplot:
+          rect = ptch.Rectangle((self.x[level][box][0:2].sum()/2.0, \
+                                 self.y[level][box][0:2].sum()/2.0), \
+                                 self.x[level][box][-2]-self.x[level][box][0], \
+                                 self.y[level][box][-2]-self.y[level][box][0], \
+                                 linewidth = 1, edgecolor = color[level], facecolor = 'none')
+
+          ax.add_patch(rect)
+
+      # attempt to draw a polygon around area with higher res rather than individual boxes
+      # almost worked but the algorithm assumes that all boxes on a partiular level are the same size
+      # which is not guaranteed.
+
+      # points = getpoints(self.x[level],self.y[level])
+
+      # for point in range(len(points)):
+      #   plt.plot(points[point][0:2],points[point][2:], linewidth = 2, color = color[level], linestyle = '-.')
 
     fig.colorbar(pcm,ax = ax, location = 'right', label = self.units)
     plt.title(self.fullname + ' in ' + self.units + ' at ' + '{:.2f}'.format(self.time) + ' years')
@@ -222,6 +294,7 @@ class bisicles_var:
                                self.x[level][box][-2]-self.x[level][box][0], \
                                self.y[level][box][-2]-self.y[level][box][0], \
                                linewidth = 1, edgecolor = color[level], facecolor = 'none')
+
         ax.add_patch(rect)
 
     ax.set_aspect('equal','box')
@@ -231,7 +304,7 @@ class bisicles_var:
 
     return None
 
-def floatation(thick, bed, rhoi=917.0, rhoo=1023.6):
+def floatation(thick, bed, rhoi=918.0, rhoo=1028.0):
 
   float = deepcopy(thick)
 
@@ -270,7 +343,7 @@ def grounded(thck, bed, lsrf):
 
   ground = deepcopy(thck)
 
-  ground.vname = 'mask'
+  ground.vname = 'groundmask'
   ground.fullname = 'Grounding mask'
   ground.units = '-'
 
@@ -296,8 +369,6 @@ def grounded(thck, bed, lsrf):
       ground.data[level][box] = find_gl(ground.data[level][box])
 
   return ground
-
-  # id grounding line points
 
 def header(fname):
 
@@ -328,21 +399,83 @@ def header(fname):
 
   return None
 
+def make_mask(input):
+
+  output = deepcopy(input)
+
+  output.vname = 'compmask'
+  output.fullname = 'Mask excluding ghost and redundant cells'
+  output.units = '0 or 1'
+
+  # mask equal 0 - this is finest level at point valid
+  # mask equal 1 - next level contains this point and it is not valid
+
+  levelsmask = []
+
+  for level in range(output.levels-1):
+
+    boxesmask = []
+
+    for box in range(output.boxes[level]):
+
+      # mask = np.zeros(output.data[level][box].shape)
+
+      # mask points that have zero (or close) thickness
+
+      mask = np.where(input.data[level][box]<0.001,3,0)
+
+      # set ghost cells
+      mask[[0,-1],:] = 1.0
+      mask[:,[0,-1]] = 1.0
+
+      # visit each box at next finer level to see if it overlaps with current box
+
+      for upperbox in range(output.boxes[level+1]):
+
+        # find limits of box on finer level and shift on to coordinate system of current level
+        # note this does not include ghost cells around boundary
+
+        xlo = output.x[level+1][upperbox][1] + output.dx[level+1]/2.0
+        xhi = output.x[level+1][upperbox][-2] - output.dx[level+1]/2.0
+        ylo = output.y[level+1][upperbox][1] + output.dx[level+1]/2.0
+        yhi = output.y[level+1][upperbox][-2] - output.dx[level+1]/2.0
+
+        # check to see whether box at finer level overlaps current box
+
+        if (xlo <= output.x[level][box][-2]) & (xhi >= output.x[level][box][1]) & \
+           (ylo <= output.y[level][box][-2]) & (yhi >= output.y[level][box][1]):
+
+          # if it does then work out area that overlaps and set mask
+
+          ilo = x2i(max(xlo,output.x[level][box][1]) - output.x[level][box][0],output.dx[level])
+          ihi = x2i(min(xhi,output.x[level][box][-2]) - output.x[level][box][0],output.dx[level])
+          jlo = x2i(max(ylo,output.y[level][box][1]) - output.y[level][box][0],output.dx[level])
+          jhi = x2i(min(yhi,output.y[level][box][-2]) - output.y[level][box][0],output.dx[level])
+
+          print(level,box,level+1,upperbox,ilo,ihi,jlo,jhi)
+
+          mask[jlo:jhi+1,ilo:ihi+1] = 2.0
+
+      boxesmask.append(mask)
+
+    levelsmask.append(boxesmask)
+
+  boxesmask = []
+
+  for box in range(output.boxes[output.levels-1]):
+
+    mask = np.zeros(output.data[output.levels-1][box].shape)
+    mask[[0,-1],:] = 1.0
+    mask[:,[0,-1]] = 1.0
+
+    boxesmask.append(mask)
+
+  levelsmask.append(boxesmask)
+
+  output.data= levelsmask
+
+  return output
 
 
-
-    # self.fname = 'none'#
-    # self.time = 0#
-    # self.vname = 'none'
-    # self.fullname = 'none'
-    # self.units = 'none'
-    # self.levels = 0#
-    # self.boxes = []#
-    # self.dx = []#
-
-    # self.data = []
-    # for i in range(self.levels):
-    #   self.data.append([None]*self.boxes[i])
-
-    # self.x = self.data
-    # self.y = self.data
+  thck=bisicles_var('C:/Users/ggajp/Modelling projects/bisicles/bluepebble/ASE-alanna/plot.ase-mrf.4lev.001000.2d.hdf5',0,masked=True)
+# thck.plot(cmap='Greys',boxplot=True)
