@@ -283,3 +283,5 @@ ecsbatch.log.*
 
 # other
 /inputs
+.ipynb_checkpoints/
+.spyproject/
