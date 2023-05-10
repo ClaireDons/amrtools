@@ -16,11 +16,8 @@
 
 import h5py
 import numpy as np
-
-# import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
-
 from copy import deepcopy
 
 
@@ -123,7 +120,6 @@ class bisicles_var:
             h5level = h5file["/level_" + str(level) + "/"]
 
             dx = h5level.attrs["dx"]
-            # print(dx)
 
             h5box = h5level.get("boxes")
             h5box = np.array(h5box)
@@ -261,8 +257,6 @@ class bisicles_var:
 
             # uniq = np.array(uniq)
 
-            # print(len(points), len(uniq))
-
             return uniq
 
         if np.isnan(datamin) | np.isnan(datamax):
@@ -291,8 +285,6 @@ class bisicles_var:
                         )
                     ),
                 )
-
-                # print(box, X.shape, self.x[level][box].shape)
 
                 pcm = ax.pcolormesh(
                     X,
@@ -355,9 +347,6 @@ class bisicles_var:
         for level in range(self.levels):
             for box in range(self.boxes[level]):
                 X, Y = np.meshgrid(self.x[level][box], self.y[level][box])
-
-                # print(box, X.shape, self.x[level][box].shape)
-
                 ax.scatter(X, Y, alpha=0.5, marker=marker[level], c=color[level])
 
                 rect = ptch.Rectangle(
@@ -412,7 +401,6 @@ def grounded(thck, bed, lsrf):
 
         for i in range(imin, imax):
             for j in range(jmin, jmax):
-                # print(i, j)
 
                 if ((d[i][j] == 2) | (d[i][j] == 4)) & (
                     (d[max(imin, i - 1)][j] == 3)
@@ -575,12 +563,3 @@ def make_mask(input):
     output.data = levelsmask
 
     return output
-
-    thck = bisicles_var(
-        "C:/Users/ggajp/Modelling projects/bisicles/bluepebble/ASE-alanna/plot.ase-mrf.4lev.001000.2d.hdf5",
-        0,
-        masked=True,
-    )
-
-
-# thck.plot(cmap='Greys',boxplot=True)

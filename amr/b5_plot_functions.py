@@ -84,22 +84,3 @@ def plot_umod(u, v, cmap, vmin, vmax):
             X, Y = box_mesh(u, level, box)
             pcm = ax.pcolormesh(X, Y, umod, cmap=cmap, vmin=vmin, vmax=vmax)
     return fig, ax, pcm
-
-
-"""
-Trying to make contours work
-
-def box_cplot(var, level, box, ax):
-    c = np.where(var.data[level][box]<1,0,1)
-    X, Y = box_mesh(var, level, box)
-    contour = ax.contour(X, Y, c)
-    return contour
-
-def contour_plot(var):
-    fig, ax = plt.subplots()
-    for level in range(var.levels):
-      for box in range(var.boxes[level]):
-        cplot = box_cplot(var, level, box, ax)
-    return cplot
-    
-"""

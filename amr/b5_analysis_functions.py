@@ -1,4 +1,4 @@
-import bisiclesh5 as b5
+from amr import bisiclesh5 as b5
 import numpy as np
 import pandas as pd
 import h5py
